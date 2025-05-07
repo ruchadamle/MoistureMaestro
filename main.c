@@ -187,7 +187,7 @@ int main() {
         if (data == 0xFFFFFFFF) {
             scroll("Error: ADC read fail");
         } else {
-            int isMoist = (data > 0x700000); // adjust threshold experimentally
+            int isMoist = (data <= 430);
             time_t now = time(NULL);
 
             if (isMoist) {
