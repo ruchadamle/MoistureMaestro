@@ -1,18 +1,18 @@
-##########################################################
-# Name: main.c
-# Date: 05/06/2025
-# Created by: Evan Broberg, Leslie Torres, Rucha Damle
-#
-# This program is the main driver code for our project,
-# the Moisture Maestro. It measures the moisture level on
-# a potted houseplant through a soil moisture sensor.
-# If the soil is dry, a message telling the user to water
-# their plant will be displayed on an LCD display, and a 
-# buzzer will play a sad chime. If the soil is adequately
-# moist, a message telling the user their plant does not
-# need watering will be displayed on the LCD, and a buzzer
-# will play a happy chime.
-##########################################################
+/*
+ * Name: main.c
+ * Date: 05/06/2025
+ * Created by: Evan Broberg, Leslie Torres, Rucha Damle
+ *
+ * This program is the main driver code for our project,
+ * the Moisture Maestro. It measures the moisture level on
+ * a potted houseplant through a soil moisture sensor.
+ * If the soil is dry, a message telling the user to water
+ * their plant will be displayed on an LCD display, and a 
+ * buzzer will play a sad chime. If the soil is adequately
+ * moist, a message telling the user their plant does not
+ * need watering will be displayed on the LCD, and a buzzer
+ * will play a happy chime.
+ */
 
 // Include Required Libraries
 #include <wiringPi.h>           // For GPIO functions
@@ -177,42 +177,84 @@ void scroll(const char* str) {
 
 ////////////////////////////// ADC Functions /////////////////////////////
 
-// Write a multi-byte value to a register over SPI
+/**
+ * @brief Sends a value to the ADC
+ *
+ * @param reg    The register address to write to
+ * @param value  The value to write 
+ * @param length How many bytes to write
+ */
 void spi_write(uint8_t reg, uint32_t value, uint8_t length) {
+    // First byte: command to write to a specific register
     uint8_t tx[4] = { AD7193_COMM_WRITE | AD7193_COMM_ADDR(reg), 0, 0, 0 };
+
+    // Fill in the next `length` bytes of the tx array with the value's bytes
     for (int i = 0; i < length; i++) {
         tx[i + 1] = (value >> (8 * (length - 1 - i))) & 0xFF;
     }
+
+    // Send (length + 1) bytes over SPI: command byte + data bytes
     bcm2835_spi_writenb((char *)tx, length + 1);
 }
 
-// Read a multi-byte value from a register over SPI
+/**
+ * @brief Reads a value from the ADC
+ *
+ * @param reg    The register address to read from
+ * @param length Number of bytes to read
+ * @return       The combined value as a 32-bit integer
+ */
 uint32_t spi_read(uint8_t reg, uint8_t length) {
+    // Command to read from a register
     uint8_t tx[5] = { AD7193_COMM_READ | AD7193_COMM_ADDR(reg), 0, 0, 0, 0 };
-    uint8_t rx[5] = { 0 };
+    // Array holds the data read from the ADC
+    uint8_t rx[5] = { 0 };  
+
     bcm2835_spi_transfernb((char *)tx, (char *)rx, length + 1);
+
     uint32_t result = 0;
+
+    // Combine received bytes 
     for (int i = 1; i <= length; i++) {
         result = (result << 8) | rx[i];
     }
+
     return result;
 }
 
-// Wait until ADC signals data is ready or timeout (in ms)
+/**
+ * @brief Keeps checking if the ADC is done measuring
+ *
+ * @param timeout_ms Maximum time to wait in milliseconds
+ * @return 1 if data became ready before the timeout, 0 if timeout occurred
+ */
 int wait_for_rdy(int timeout_ms) {
     while ((spi_read(AD7193_REG_STAT, 1) & 0x80) && --timeout_ms) {
-        usleep(1000);  // Poll every 1 ms
+        // Wait before checking again
+        usleep(1000);  // Wait 1 millisecond before checking again
     }
-    return timeout_ms > 0;  // Return success/failure
+    return timeout_ms > 0;
 }
 
-// Trigger one ADC sample and return the result
+/**
+ * @brief Takes a single measurement and returns the result
+ *
+ * @return The measured value, or 0xFFFFFFFF if there was a timeout
+ */
 uint32_t read_single_sample() {
-    spi_write(AD7193_REG_MODE, MODE_IDLE, 3);     // Set to idle
-    usleep(5000);
-    spi_write(AD7193_REG_MODE, MODE_SINGLE, 3);   // Start single conversion
-    if (!wait_for_rdy(5000)) return 0xFFFFFFFF;   // Timeout
-    return spi_read(AD7193_REG_DATA, 3);          // Read result
+    // Stop any previous operation
+    spi_write(AD7193_REG_MODE, MODE_IDLE, 3);  
+    usleep(5000);                               
+
+    // Trigger a single ADC reading
+    spi_write(AD7193_REG_MODE, MODE_SINGLE, 3);  
+
+    // Wait up to 5 seconds before timeout
+    if (!wait_for_rdy(5000))                   
+        return 0xFFFFFFFF;                      
+
+    // Read the result
+    return spi_read(AD7193_REG_DATA, 3);        
 }
 
 ////////////////////////// Buzzer Functions ///////////////////////////////////
