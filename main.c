@@ -350,7 +350,7 @@ int main() {
     pinMode(BUZZER_PIN, OUTPUT);
 
     // Track the last chime times
-    time_t lastHappy = 0
+    time_t lastHappy = 0;
     time_t lastSad = 0;
 
     // Main loop
