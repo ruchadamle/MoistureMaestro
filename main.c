@@ -362,7 +362,7 @@ int main() {
             scroll("Error: ADC read fail");
         } else {
             // Considered moist if reading is less than or equal to 430
-            int isMoist = (data <= 430);      
+            int isMoist = data == 0x000000;      
             time_t now = time(NULL);
 
             if (isMoist) {
@@ -374,7 +374,7 @@ int main() {
                 }
             } else {
                 scroll("Attention: Water the plant!");
-                if (now - lastSad >= 10) {
+                if (now - lastSad >= 6) {
                     playSadChime();
                     lastSad = now;
                 }
