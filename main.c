@@ -362,7 +362,7 @@ int main() {
             scroll("Error: ADC read fail");
         } else {
             // Considered moist if reading is less than or equal to 430
-            int isMoist = data == 0x000000;      
+            int isMoist = (data == 0x000000);      
             time_t now = time(NULL);
 
             if (isMoist) {
